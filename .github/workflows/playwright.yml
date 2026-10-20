@@ -1,0 +1,52 @@
+name: Playwright Tests a Demanda
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_path:
+        description: 'Ruta del archivo de pruebas a ejecutar'
+        required: false
+        default: 'tests/pacientes.spec.ts'
+
+# Permiso obligatorio para que el GITHUB_TOKEN pueda crear y comentar issues
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependencias del proyecto
+        run: npm ci
+
+      - name: Instalar navegadores de Playwright con dependencias del sistema
+        run: npx playwright install --with-deps
+
+      - name: Ejecutar pruebas de Playwright
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          # Si usas baseURL o credenciales guardadas, agrégalas aquí como secrets
+          # BASE_URL: ${{ secrets.BASE_URL }}
+        run: npx playwright test ${{ github.event.inputs.test_path }}
+
+      - name: Subir reporte de Playwright en caso de fallo
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 15
