@@ -6,17 +6,35 @@ export default class GitHubIssueReporter implements Reporter {
   private octokit: Octokit;
   private owner: string;
   private repo: string;
+  private enabled: boolean;
 
   constructor() {
     this.octokit = new Octokit({
       auth: process.env.GITHUB_TOKEN, // Token de acceso personal o token de GitHub Actions
     });
     this.owner = process.env.GITHUB_OWNER || 'elturcofarid';
-    this.repo = process.env.GITHUB_REPO || 'ceiba-backend';
+    this.repo = process.env.GITHUB_REPO || 'ceiba-playwright';
+
+    // Solo actúa en CI, o en local si se activa explícitamente con GITHUB_REPORTER=true
+    const activo = !!process.env.CI || process.env.GITHUB_REPORTER === 'true';
+    this.enabled = activo && !!process.env.GITHUB_TOKEN;
+
+    if (activo && !process.env.GITHUB_TOKEN) {
+      console.warn('\n⚠️ GitHubIssueReporter desactivado: falta GITHUB_TOKEN.');
+    }
   }
 
   async onTestEnd(test: TestCase, result: TestResult) {
-if (result.status !== 'failed' && result.status !== 'timedOut') {
+    if (!this.enabled) {
+      return;
+    }
+
+    if (result.status !== 'failed' && result.status !== 'timedOut') {
+      return;
+    }
+
+    // Si aún quedan reintentos, esperar al último intento para no reportar fallos intermitentes
+    if (result.retry < test.retries) {
       return;
     }
 
@@ -81,6 +99,8 @@ ${errorMsg || 'No se capturó un mensaje de error específico.'}
       } catch (err: any) {
         console.error(`\n❌ Error creando Issue en GitHub:`, err.message);
       }
+    } catch (err: any) {
+      console.error(`\n❌ Error consultando Issues en GitHub:`, err.message);
     }
   }
 }

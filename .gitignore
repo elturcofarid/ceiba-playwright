@@ -6,3 +6,13 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# playwright-bdd (specs generados)
+/.features-gen/
+
+# Sesiones y secretos
+auth.json
+.env*
+
+# macOS
+.DS_Store
