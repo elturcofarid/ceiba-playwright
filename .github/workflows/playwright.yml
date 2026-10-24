@@ -3,10 +3,10 @@ name: Playwright Tests a Demanda
 on:
   workflow_dispatch:
     inputs:
-      test_path:
-        description: 'Ruta del archivo de pruebas a ejecutar'
+      tags:
+        description: 'Tags a ejecutar (regex de --grep), ej: @pacientes o @TC-PAC-001|@TC-PAC-002'
         required: false
-        default: 'tests/pacientes.spec.ts'
+        default: '@pacientes'
 
 # Permiso obligatorio para que el GITHUB_TOKEN pueda crear y comentar issues
 permissions:
@@ -34,14 +34,20 @@ jobs:
       - name: Instalar navegadores de Playwright con dependencias del sistema
         run: npx playwright install --with-deps
 
+      - name: Generar specs desde los .feature
+        run: npx bddgen
+
       - name: Ejecutar pruebas de Playwright
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_OWNER: ${{ github.repository_owner }}
           GITHUB_REPO: ${{ github.event.repository.name }}
-          # Si usas baseURL o credenciales guardadas, agrégalas aquí como secrets
-          # BASE_URL: ${{ secrets.BASE_URL }}
-        run: npx playwright test ${{ github.event.inputs.test_path }}
+          TAGS: ${{ github.event.inputs.tags }}
+          # Configurar en Settings → Secrets and variables → Actions
+          BASE_URL: ${{ secrets.BASE_URL }}
+          CAJA_EMAIL: ${{ secrets.CAJA_EMAIL }}
+          CAJA_PASSWORD: ${{ secrets.CAJA_PASSWORD }}
+        run: npm run test
 
       - name: Subir reporte de Playwright en caso de fallo
         uses: actions/upload-artifact@v4
